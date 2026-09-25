@@ -1,0 +1,31 @@
+{
+  "type": "falling_object",
+  "description": "The building drops from the top of the screen onto the opponent's position; dodge by moving left/right during the warning.",
+  "dodge": "move",
+  "sprites": {
+    "building": {
+      "frame_width": 192,
+      "frame_height": 86,
+      "frames": 1,
+      "file": "building.png",
+      "fps": 1,
+      "loop": false
+    },
+    "warning": {
+      "file": "../../../effects/ulti_warning.png",
+      "fps": 6
+    },
+    "impact": {
+      "file": "../../../effects/ulti_crash.png",
+      "fps": 16
+    }
+  },
+  "suggested": {
+    "warning_frames": 50,
+    "fall_speed": 16.0,
+    "damage": 25,
+    "hitbox_inset_px": 30
+  },
+  "sound": "../sounds/ulti.wav",
+  "caster_animation": "ulti"
+}

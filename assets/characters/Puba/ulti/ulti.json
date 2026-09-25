@@ -1,0 +1,37 @@
+{
+  "type": "lightning",
+  "description": "A red stock-crash cloud appears above the opponent, then a lightning bolt strikes that spot; dodge by moving left/right during the warning.",
+  "dodge": "move",
+  "sprites": {
+    "cloud": {
+      "frame_width": 144,
+      "frame_height": 60,
+      "frames": 2,
+      "file": "chart_cloud.png",
+      "fps": 6,
+      "loop": true
+    },
+    "bolt": {
+      "frame_width": 80,
+      "frame_height": 416,
+      "frames": 4,
+      "file": "bolt.png",
+      "fps": 20,
+      "loop": true
+    },
+    "warning": {
+      "file": "../../../effects/ulti_warning.png",
+      "fps": 6
+    }
+  },
+  "suggested": {
+    "strikes": 3,
+    "warning_frames": 45,
+    "bolt_frames": 18,
+    "hitbox_width_px": 50,
+    "damage": 12,
+    "cloud_y_px": 40
+  },
+  "sound": "../sounds/ulti.wav",
+  "caster_animation": "ulti"
+}

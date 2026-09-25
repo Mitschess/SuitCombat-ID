@@ -1,0 +1,97 @@
+{
+  "name": "Wowi",
+  "frame_width": 112,
+  "frame_height": 112,
+  "anchor": [
+    48,
+    112
+  ],
+  "facing": "right",
+  "projectile": {
+    "file": "Wowi_projectile.png",
+    "frame_width": 48,
+    "frame_height": 32,
+    "frames": 4,
+    "fps": 12
+  },
+  "animations": {
+    "idle": {
+      "row": 0,
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    "walk": {
+      "row": 1,
+      "frames": 6,
+      "fps": 10,
+      "loop": true
+    },
+    "walk_back": {
+      "row": 2,
+      "frames": 6,
+      "fps": 9,
+      "loop": true
+    },
+    "crouch": {
+      "row": 3,
+      "frames": 2,
+      "fps": 14,
+      "loop": false
+    },
+    "jump": {
+      "row": 4,
+      "frames": 3,
+      "fps": 8,
+      "loop": false
+    },
+    "punch": {
+      "row": 5,
+      "frames": 4,
+      "fps": 16,
+      "loop": false
+    },
+    "kick": {
+      "row": 6,
+      "frames": 4,
+      "fps": 14,
+      "loop": false
+    },
+    "cast": {
+      "row": 7,
+      "frames": 4,
+      "fps": 12,
+      "loop": false
+    },
+    "block": {
+      "row": 8,
+      "frames": 2,
+      "fps": 10,
+      "loop": false
+    },
+    "hit": {
+      "row": 9,
+      "frames": 3,
+      "fps": 12,
+      "loop": false
+    },
+    "ko": {
+      "row": 10,
+      "frames": 5,
+      "fps": 8,
+      "loop": false
+    },
+    "victory": {
+      "row": 11,
+      "frames": 4,
+      "fps": 6,
+      "loop": true
+    },
+    "ulti": {
+      "row": 12,
+      "frames": 4,
+      "fps": 8,
+      "loop": false
+    }
+  }
+}

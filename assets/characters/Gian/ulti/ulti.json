@@ -1,0 +1,29 @@
+{
+  "type": "clone_rain",
+  "description": "10 Gian clones fall from the sky onto the opponent; dodge by moving left/right.",
+  "dodge": "move",
+  "sprites": {
+    "falling": {
+      "frame_width": 112,
+      "frame_height": 112,
+      "frames": 2,
+      "file": "gian_fall.png",
+      "fps": 8,
+      "loop": true
+    },
+    "impact": {
+      "file": "../../../effects/ulti_crash.png",
+      "fps": 16
+    }
+  },
+  "suggested": {
+    "count": 10,
+    "spawn_interval_frames": 8,
+    "spread_px": 140,
+    "fall_speed": 9.0,
+    "damage_per_hit": 4,
+    "draw_scale": 0.8
+  },
+  "sound": "../sounds/ulti.wav",
+  "caster_animation": "ulti"
+}

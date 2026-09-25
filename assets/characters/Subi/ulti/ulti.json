@@ -1,0 +1,32 @@
+{
+  "type": "parabolic_missile",
+  "description": "A palm-oil tree missile launches from Subi, arcs upward and comes down on the opponent's position; dodge by moving left/right. Rotate the sprite to its velocity angle (it points right at 0 degrees).",
+  "dodge": "move",
+  "sprites": {
+    "missile": {
+      "frame_width": 120,
+      "frame_height": 52,
+      "frames": 4,
+      "file": "sawit_missile.png",
+      "fps": 14,
+      "loop": true,
+      "facing": "right"
+    },
+    "explosion": {
+      "frame_width": 112,
+      "frame_height": 112,
+      "frames": 6,
+      "file": "explosion.png",
+      "fps": 14,
+      "loop": false
+    }
+  },
+  "suggested": {
+    "flight_frames": 70,
+    "apex_height_px": 300,
+    "explosion_radius_px": 60,
+    "damage": 22
+  },
+  "sound": "../sounds/ulti.wav",
+  "caster_animation": "ulti"
+}

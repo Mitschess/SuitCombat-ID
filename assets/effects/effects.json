@@ -1,0 +1,23 @@
+{
+  "hit_spark": {
+    "frame_width": 64,
+    "frame_height": 64,
+    "frames": 5,
+    "fps": 24,
+    "loop": false
+  },
+  "block_spark": {
+    "frame_width": 48,
+    "frame_height": 48,
+    "frames": 4,
+    "fps": 20,
+    "loop": false
+  },
+  "dust": {
+    "frame_width": 64,
+    "frame_height": 32,
+    "frames": 4,
+    "fps": 14,
+    "loop": false
+  }
+}

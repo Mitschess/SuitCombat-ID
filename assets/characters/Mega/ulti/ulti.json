@@ -1,0 +1,23 @@
+{
+  "type": "charge",
+  "description": "A bull runs along the floor from Mega's side of the screen toward the opponent; dodge by jumping. Sprite faces right - flip it when running right-to-left.",
+  "dodge": "jump",
+  "sprites": {
+    "run": {
+      "frame_width": 184,
+      "frame_height": 160,
+      "frames": 4,
+      "file": "bull_run.png",
+      "fps": 12,
+      "loop": true,
+      "facing": "right"
+    }
+  },
+  "suggested": {
+    "speed": 11.0,
+    "damage": 20,
+    "hitbox_height_px": 70
+  },
+  "sound": "../sounds/ulti.wav",
+  "caster_animation": "ulti"
+}
