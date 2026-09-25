@@ -110,7 +110,7 @@ class CombatManager:
             
             # Play sound effect
             if sound_manager:
-                sound_manager.play("hit" if not is_blocked else "select")
+                sound_manager.play("hit" if not is_blocked else "block")
                 
             hit_x = defender.rect.centerx
             hit_y = defender.rect.centery
@@ -136,7 +136,7 @@ class CombatManager:
                 target.take_damage(damage, knockback_dir=p.direction)
                 
                 if sound_manager:
-                    sound_manager.play("hit")
+                    sound_manager.play("hit" if not is_blocked else "block")
                     
                 self.add_hit_effect(p.rect.centerx, p.rect.centery, damage, is_blocked=is_blocked, color=p.color)
 

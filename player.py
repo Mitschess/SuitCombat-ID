@@ -76,8 +76,11 @@ class Player:
                 print(f"Could not load player sprite: {e}")
 
     def get_rect(self):
-        current_h = FIGHTER_CROUCH_HEIGHT if self.is_crouching else self.height
-        return pygame.Rect(int(self.x), int(self.y), self.width, current_h)
+        # Crouching shrinks the body from the top so the feet stay on the floor
+        if self.is_crouching:
+            crouch_top = int(self.y) + self.height - FIGHTER_CROUCH_HEIGHT
+            return pygame.Rect(int(self.x), crouch_top, self.width, FIGHTER_CROUCH_HEIGHT)
+        return pygame.Rect(int(self.x), int(self.y), self.width, self.height)
 
     def handle_input(self, keys):
         # Reset horizontal velocity
@@ -130,7 +133,7 @@ class Player:
             self.ranged_cooldown = RANGED_COOLDOWN
             # Return projectile spawn specs
             spawn_x = self.x + self.width if self.facing_direction == 1 else self.x - 16
-            spawn_y = self.y + 25 if not self.is_crouching else self.y + 15
+            spawn_y = self.y + 25 if not self.is_crouching else self.get_rect().top + 15
             return {
                 'x': spawn_x,
                 'y': spawn_y,
@@ -147,7 +150,7 @@ class Player:
         
         hitbox_width = MELEE_RANGE
         hitbox_height = 40
-        hitbox_y = self.y + 15 if not self.is_crouching else self.y + 10
+        hitbox_y = self.y + 15 if not self.is_crouching else self.get_rect().top + 10
         
         if self.facing_direction == 1:
             hitbox_x = self.x + self.width
@@ -177,9 +180,9 @@ class Player:
             self.vy += GRAVITY * delta_time
 
         # Ground collision
-        current_h = FIGHTER_CROUCH_HEIGHT if self.is_crouching else self.height
-        if self.y + current_h >= GROUND_Y:
-            self.y = GROUND_Y - current_h
+        # Ground collision (self.y is always the top of the standing body)
+        if self.y + self.height >= GROUND_Y:
+            self.y = GROUND_Y - self.height
             self.vy = 0.0
             self.is_grounded = True
 

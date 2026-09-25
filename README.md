@@ -1,7 +1,7 @@
 
-# PyFight — 2D Retro Fighting Game (Player vs Computer)
+# Suit Combat ID — 2D Retro Fighting Game
 
-PyFight adalah prototype game pertarungan 2D 1v1 antara Pemain (Player) dan Komputer (Computer AI) yang dibangun menggunakan Python dan Pygame.
+Suit Combat ID adalah game pertarungan 2D 1v1 antara Pemain (Player) dan Komputer (Computer AI) yang dibangun menggunakan Python dan Pygame.
 
 ---
 
@@ -30,6 +30,7 @@ PyFight adalah prototype game pertarungan 2D 1v1 antara Pemain (Player) dan Komp
 | Tombol                   | Aksi                         |
 | :----------------------- | :--------------------------- |
 | **ESC**            | Pause Game / Kembali ke Menu |
+| **F11**            | Fullscreen on/off |
 | **ENTER / SPACE**  | Memilih Menu / Play Again    |
 | **ARROWS (↑/↓)** | Navigasi Menu                |
 
@@ -37,7 +38,7 @@ PyFight adalah prototype game pertarungan 2D 1v1 antara Pemain (Player) dan Komp
 
 ## 🥊 Karakter & ULTI
 
-Pilih salah satu dari 5 karakter di layar **SELECT YOUR FIGHTER** (A/D atau panah, ENTER). CPU memakai karakter acak lainnya.
+Di layar **PILIH JAGOAN** pilih karaktermu (A/D atau panah, ENTER), lalu di **PILIH LAWAN** pilih karakter CPU atau kartu **ACAK** untuk lawan acak (ESC untuk mengganti jagoan).
 
 | Karakter | ULTI | Cara menghindar |
 | :------- | :--- | :-------------- |
@@ -47,10 +48,22 @@ Pilih salah satu dari 5 karakter di layar **SELECT YOUR FIGHTER** (A/D atau pana
 | **Subi** | Misil Sawit — misil sawit melengkung (parabola) ke lawan | geser kiri/kanan |
 | **Wowi** | Gedung Jatuh — gedung dijatuhkan dari atas | geser kiri/kanan |
 
+Setelah memilih karakter, pilih **ARENA** (IKN, Istana, Kopdes, Dapur MBG, Kebun Sawit, Arena Kuil) dan **DIFFICULTY**:
+
+| Difficulty | CPU |
+| :--------- | :-- |
+| **EASY**   | lambat, jarang menyerang & menangkis, jarang menghindari ULTI |
+| **MEDIUM** | seimbang |
+| **HARD**   | cepat, damage lebih besar, sering menangkis, hampir selalu menghindari ULTI |
+
+**Health (nampan MBG):** setiap 8–13 detik sebuah nampan jatuh di posisi acak. Siapa pun yang menyentuhnya duluan (pemain atau CPU) mendapat **+1/3 nyawa (33 HP)**. Nampan menghilang (berkedip dulu) kalau tidak diambil. CPU yang HP-nya rendah akan mengejar nampan — makin tinggi difficulty, makin sering.
+
 Meter ULTI terisi saat memberi/menerima damage. Tanda merah di lantai menunjukkan titik jatuhnya serangan.
 
 Suara khas karakter: taruh file `.wav` di `assets/characters/<Nama>/sounds/` (lihat `README.txt` di folder itu).
-Aset dibuat ulang dengan `python generate_sprites.py` lalu `python generate_ulti.py`.
+Menu **SETTINGS** (dari menu utama atau pause): volume master / musik / efek suara dan fullscreen — tersimpan di `config.json`.
+
+Musik & efek suara dibuat oleh `python generate_audio.py`; sprite health oleh `python generate_pickups.py`. Aset dibuat ulang dengan `python generate_sprites.py`, `python generate_ulti.py`, lalu `python generate_stages.py` (latar dari `assets/latar_*.jpg`).
 
 ---
 

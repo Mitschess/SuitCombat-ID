@@ -51,7 +51,7 @@ class UltiEffect:
         self.alive = True
         self.t = 0
         self.fx = []
-        self.ai_will_dodge = random.random() < 0.65   # CPU reaction roll, decided once per ulti
+        self.ai_will_dodge = random.random() < getattr(target, "ulti_dodge_chance", 0.65)   # CPU reaction roll
 
     def hit(self, combat, sound, damage, x, y):
         if self.target.is_dead:

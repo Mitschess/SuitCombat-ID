@@ -1,26 +1,42 @@
+import random
 import pygame
-import math
-from settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_BG_DARK, COLOR_MENU_TITLE,
-    COLOR_MENU_SUBTITLE, COLOR_BUTTON_NORMAL, COLOR_BUTTON_HOVER,
-    COLOR_BUTTON_BORDER, COLOR_TEXT_NORMAL, COLOR_TEXT_SELECTED, COLOR_WHITE,
-    COLOR_PLAYER, COLOR_ENEMY
-)
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_BG_DARK
+from pixelfont import draw_text, draw_title, draw_panel, dim, text_size, GOLD, CREAM, GREY, RED
+from sprites import ROSTER, get_character
+from stages import load_stages
+from character_select import ULTI_NAMES
+
+BG_SWITCH_FRAMES = 360
+
 
 class MainMenu:
+    """Title screen + HOW TO PLAY screen."""
+
     def __init__(self):
-        pygame.font.init()
-        self.font_title = pygame.font.SysFont("Impact", 80) or pygame.font.SysFont("Arial", 80, bold=True)
-        self.font_subtitle = pygame.font.SysFont("Verdana", 20)
-        self.font_button = pygame.font.SysFont("Verdana", 26, bold=True)
-        self.font_controls = pygame.font.SysFont("Consolas", 22) or pygame.font.SysFont("Courier New", 22)
-        
         self.selected_index = 0
-        self.options = ["PLAY", "HOW TO PLAY", "QUIT"]
+        self.options = ["PLAY", "HOW TO PLAY", "SETTINGS", "QUIT"]
         self.anim_counter = 0
+        self.stages = load_stages()
+        self.stage_index = 0
+        self.fighters = []
+        self.pick_fighters()
+
+    def pick_fighters(self):
+        left, right = random.sample(ROSTER, 2)
+        self.fighters = []
+        for name, facing in ((left, 1), (right, -1)):
+            anim = get_character(name).new_animator()
+            anim.play("idle")
+            self.fighters.append((name, anim, facing))
 
     def update(self):
         self.anim_counter += 1
+        for _, anim, _ in self.fighters:
+            anim.update()
+        if self.anim_counter % BG_SWITCH_FRAMES == 0:
+            if self.stages:
+                self.stage_index = (self.stage_index + 1) % len(self.stages)
+            self.pick_fighters()
 
     def handle_key_input(self, key):
         if key == pygame.K_UP or key == pygame.K_w:
@@ -33,131 +49,94 @@ class MainMenu:
             return self.options[self.selected_index]
         return None
 
-    def draw_background_arena(self, surface):
-        """Draws animated background preview for Main Menu."""
-        surface.fill(COLOR_BG_DARK)
-        
-        # Grid lines background
-        grid_size = 40
-        grid_offset = (self.anim_counter * 0.5) % grid_size
-        for x in range(0, SCREEN_WIDTH, grid_size):
-            pygame.draw.line(surface, (25, 30, 50), (x, 0), (x, SCREEN_HEIGHT))
-        for y in range(0, SCREEN_HEIGHT, grid_size):
-            pygame.draw.line(surface, (25, 30, 50), (0, int(y + grid_offset)), (SCREEN_WIDTH, int(y + grid_offset)))
+    def draw_backdrop(self, surface, darkness=150):
+        if self.stages:
+            surface.blit(self.stages[self.stage_index].image, (0, 0))
+        else:
+            surface.fill(COLOR_BG_DARK)
+        dim(surface, darkness)
 
-        # Neon Floor line
-        ground_y = SCREEN_HEIGHT - 80
-        pygame.draw.rect(surface, (20, 24, 40), (0, ground_y, SCREEN_WIDTH, 80))
-        pygame.draw.line(surface, COLOR_MENU_TITLE, (0, ground_y), (SCREEN_WIDTH, ground_y), 3)
-
-        # Background silhouette mockup fighters
-        p1_rect = pygame.Rect(180, ground_y - 90, 60, 90)
-        p2_rect = pygame.Rect(SCREEN_WIDTH - 240, ground_y - 90, 60, 90)
-        
-        p1_surf = pygame.Surface((60, 90), pygame.SRCALPHA)
-        p1_surf.fill((0, 180, 255, 60))
-        surface.blit(p1_surf, p1_rect.topleft)
-
-        p2_surf = pygame.Surface((60, 90), pygame.SRCALPHA)
-        p2_surf.fill((255, 50, 80, 60))
-        surface.blit(p2_surf, p2_rect.topleft)
+    def draw_fighter(self, surface, name, anim, facing, x, ground, scale=2):
+        assets = get_character(name)
+        frame = pygame.Surface((assets.frame_w, assets.frame_w), pygame.SRCALPHA)
+        anim.draw(frame, (assets.anchor[0] if facing == 1 else assets.frame_w - assets.anchor[0], assets.anchor[1]), facing)
+        big = pygame.transform.scale(frame, (assets.frame_w * scale, assets.frame_w * scale))
+        surface.blit(big, (x - big.get_width() // 2, ground - big.get_height()))
 
     def draw(self, surface):
-        self.draw_background_arena(surface)
+        self.draw_backdrop(surface, 120)
 
-        # Main Title Banner
-        title_str = "PYFIGHT"
-        title_surf = self.font_title.render(title_str, True, COLOR_MENU_TITLE)
-        
-        # Title Glow & Pulse effect
-        glow_pulse = 2 + math.sin(self.anim_counter * 0.08) * 2
-        title_shadow = self.font_title.render(title_str, True, (0, 100, 200))
-        surface.blit(title_shadow, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2 + int(glow_pulse), 90 + int(glow_pulse)))
-        surface.blit(title_surf, (SCREEN_WIDTH // 2 - title_surf.get_width() // 2, 90))
+        # fighters flanking the menu
+        ground = SCREEN_HEIGHT - 30
+        for (name, anim, facing), x in zip(self.fighters, (170, SCREEN_WIDTH - 170)):
+            self.draw_fighter(surface, name, anim, facing, x, ground)
+            draw_text(surface, name, (x, ground + 4), 2, GOLD, align="center")
 
-        # Subtitle
-        sub_txt = self.font_subtitle.render("2D RETRO FIGHTING GAME — PLAYER VS CPU", True, COLOR_MENU_SUBTITLE)
-        surface.blit(sub_txt, (SCREEN_WIDTH // 2 - sub_txt.get_width() // 2, 180))
+        # title
+        bob = 3 if (self.anim_counter // 30) % 2 else 0
+        # "SUIT COMBAT" with a smaller red "ID" beside it, bottom-aligned, centred as one logo
+        title_w, title_h = text_size("SUIT COMBAT", 10)
+        id_w, id_h = text_size("ID", 6)
+        gap = 18
+        x0 = SCREEN_WIDTH // 2 - (title_w + gap + id_w) // 2
+        y0 = 44 + bob
+        draw_title(surface, "SUIT COMBAT", x0 + title_w // 2, y0, 10)
+        draw_title(surface, "ID", x0 + title_w + gap + id_w // 2, y0 + title_h - id_h, 6, top=(255, 90, 60), bottom=RED)
 
-        # Menu Option Buttons
+        # options
+        panel = pygame.Rect(SCREEN_WIDTH // 2 - 190, 200, 380, 286)
+        draw_panel(surface, panel)
         button_rects = []
-        btn_w, btn_h = 320, 55
-        start_y = 250
-
         for i, opt in enumerate(self.options):
-            btn_x = SCREEN_WIDTH // 2 - btn_w // 2
-            btn_y = start_y + i * 75
-            b_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
-            button_rects.append((b_rect, opt))
+            y = panel.top + 30 + i * 62
+            rect = pygame.Rect(panel.left + 20, y - 10, panel.width - 40, 48)
+            button_rects.append((rect, opt))
+            selected = i == self.selected_index
+            if selected:
+                pygame.draw.rect(surface, (70, 20, 30), rect)
+                pygame.draw.rect(surface, RED, rect, 2)
+                if (self.anim_counter // 15) % 2 == 0:
+                    draw_text(surface, ">", (rect.left + 14, y), 4, GOLD)
+                    draw_text(surface, "<", (rect.right - 14, y), 4, GOLD, align="right")
+            draw_text(surface, opt, (rect.centerx, y), 4, GOLD if selected else GREY, align="center")
 
-            is_selected = (i == self.selected_index)
-            bg_color = COLOR_BUTTON_HOVER if is_selected else COLOR_BUTTON_NORMAL
-            border_color = COLOR_MENU_TITLE if is_selected else (60, 70, 100)
-            text_color = COLOR_TEXT_SELECTED if is_selected else COLOR_TEXT_NORMAL
-
-            # Draw Button Card
-            pygame.draw.rect(surface, bg_color, b_rect, border_radius=10)
-            pygame.draw.rect(surface, border_color, b_rect, width=3 if is_selected else 1, border_radius=10)
-
-            # Draw Selection Pointer Indicator
-            if is_selected:
-                pointer_left = (b_rect.left - 25, b_rect.centery)
-                pointer_top = (b_rect.left - 40, b_rect.centery - 10)
-                pointer_bot = (b_rect.left - 40, b_rect.centery + 10)
-                pygame.draw.polygon(surface, COLOR_MENU_TITLE, [pointer_left, pointer_top, pointer_bot])
-
-            text_surf = self.font_button.render(opt, True, text_color)
-            surface.blit(text_surf, (b_rect.centerx - text_surf.get_width() // 2, b_rect.centery - text_surf.get_height() // 2))
-
-        # Footer instructions
-        footer = self.font_subtitle.render("Use UP/DOWN Arrows & ENTER or MOUSE to select", True, COLOR_TEXT_NORMAL)
-        surface.blit(footer, (SCREEN_WIDTH // 2 - footer.get_width() // 2, SCREEN_HEIGHT - 45))
-
+        draw_text(surface, "W/S : PILIH     ENTER : OK", (SCREEN_WIDTH // 2, SCREEN_HEIGHT - 26), 2, CREAM, align="center")
         return button_rects
 
     def draw_how_to_play(self, surface):
-        self.draw_background_arena(surface)
+        self.draw_backdrop(surface, 190)
+        panel = pygame.Rect(60, 24, SCREEN_WIDTH - 120, SCREEN_HEIGHT - 48)
+        draw_panel(surface, panel)
+        draw_title(surface, "HOW TO PLAY", SCREEN_WIDTH // 2, panel.top + 18, 6)
 
-        card_w, card_h = 680, 480
-        card_x = SCREEN_WIDTH // 2 - card_w // 2
-        card_y = SCREEN_HEIGHT // 2 - card_h // 2
-
-        pygame.draw.rect(surface, (20, 25, 42), (card_x, card_y, card_w, card_h), border_radius=12)
-        pygame.draw.rect(surface, COLOR_MENU_TITLE, (card_x, card_y, card_w, card_h), width=2, border_radius=12)
-
-        title = self.font_title.render("HOW TO PLAY", True, COLOR_MENU_TITLE)
-        surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, card_y + 15))
-
-        lines = [
-            ("--- MOVEMENT ---", COLOR_MENU_SUBTITLE),
-            ("A / D      : Move Left / Right", COLOR_WHITE),
-            ("W          : Jump", COLOR_WHITE),
-            ("S          : Crouch Stance", COLOR_WHITE),
-            ("", COLOR_WHITE),
-            ("--- COMBAT ---", COLOR_MENU_SUBTITLE),
-            ("J          : Melee Attack (Punch / Slash)", COLOR_WHITE),
-            ("K          : Ranged Attack (Energy Projectile)", COLOR_WHITE),
-            ("L          : Block (Reduce 75% Damage)", COLOR_WHITE),
-            ("U          : ULTI (when the ULTI meter is full)", COLOR_WHITE),
-            ("", COLOR_WHITE),
-            ("--- SYSTEM ---", COLOR_MENU_SUBTITLE),
-            ("ESC        : Pause / Back to Menu", COLOR_WHITE)
+        controls = [
+            ("A / D", "MAJU / MUNDUR"),
+            ("W", "LOMPAT"),
+            ("S", "JONGKOK"),
+            ("J", "PUKUL / TENDANG"),
+            ("K", "TEMBAK PROYEKTIL"),
+            ("L", "TANGKIS (-75% DMG)"),
+            ("U", "ULTI (METER PENUH)"),
+            ("ESC", "PAUSE"),
         ]
+        x0, y0 = panel.left + 40, panel.top + 90
+        draw_text(surface, "KONTROL", (x0, y0), 3, RED)
+        for i, (key, desc) in enumerate(controls):
+            y = y0 + 40 + i * 34
+            draw_text(surface, key, (x0, y), 2, GOLD)
+            draw_text(surface, desc, (x0 + 90, y), 2, CREAM)
 
-        y_offset = card_y + 90
-        for line, col in lines:
-            if line:
-                txt = self.font_controls.render(line, True, col)
-                surface.blit(txt, (card_x + 50, y_offset))
-            y_offset += 24
+        x1 = panel.centerx + 20
+        draw_text(surface, "ULTI", (x1, y0), 3, RED)
+        dodge = {"Mega": "LOMPAT!"}
+        for i, name in enumerate(ROSTER):
+            y = y0 + 40 + i * 58
+            surface.blit(pygame.transform.scale(get_character(name).portrait, (40, 45)), (x1, y - 6))
+            draw_text(surface, f"{name}: {ULTI_NAMES[name]}", (x1 + 52, y), 2, GOLD)
+            draw_text(surface, f"HINDARI: {dodge.get(name, 'GESER KIRI/KANAN')}", (x1 + 52, y + 20), 2, GREY)
 
-        # Back Button prompt
-        btn_w, btn_h = 220, 45
-        b_rect = pygame.Rect(SCREEN_WIDTH // 2 - btn_w // 2, card_y + card_h - 60, btn_w, btn_h)
-        pygame.draw.rect(surface, COLOR_BUTTON_HOVER, b_rect, border_radius=8)
-        pygame.draw.rect(surface, COLOR_MENU_TITLE, b_rect, width=2, border_radius=8)
-
-        back_txt = self.font_button.render("BACK (ESC)", True, COLOR_TEXT_SELECTED)
-        surface.blit(back_txt, (b_rect.centerx - back_txt.get_width() // 2, b_rect.centery - back_txt.get_height() // 2))
-
-        return b_rect
+        back = pygame.Rect(SCREEN_WIDTH // 2 - 130, panel.bottom - 56, 260, 40)
+        pygame.draw.rect(surface, (70, 20, 30), back)
+        pygame.draw.rect(surface, RED, back, 2)
+        draw_text(surface, "ESC : KEMBALI", (back.centerx, back.top + 12), 2, GOLD, align="center")
+        return back

@@ -24,6 +24,8 @@ import math
 import random
 import shutil
 import subprocess
+import wave
+import numpy as np
 from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
 
 from generate_sprites import (
@@ -379,6 +381,36 @@ def build_shared():
 # ---------------------------------------------------------------------------
 # Sounds: m4a -> wav (pygame can't decode AAC)
 # ---------------------------------------------------------------------------
+ULTI_LOUDNESS_DB = -11.0   # target RMS loudness (dBFS) so every ulti is equally loud
+
+
+def boost_loudness(path, target_db=ULTI_LOUDNESS_DB, ceiling=0.95):
+    """Raise a 16-bit WAV to the target RMS loudness, with a smooth peak limiter so it doesn't clip."""
+    with wave.open(path) as w:
+        params = w.getparams()
+        data = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float64) / 32768
+    if params.sampwidth != 2 or not len(data):
+        return
+    rms = np.sqrt(np.mean(data ** 2)) or 1e-9
+    y = data * 10 ** ((target_db - 20 * np.log10(rms)) / 20)
+    # limiter: per-frame peak envelope (5 ms hold, 50 ms release) -> gain reduction above the ceiling
+    frames = np.abs(y).reshape(-1, params.nchannels).max(axis=1)
+    hold = max(1, params.framerate // 200)
+    padded = np.pad(frames, (hold, hold), mode="edge")
+    env = np.max(np.lib.stride_tricks.sliding_window_view(padded, 2 * hold + 1), axis=1)
+    release = np.exp(-1.0 / (params.framerate * 0.05))
+    smooth = np.empty_like(env)
+    level = 0.0
+    for i, e in enumerate(env):
+        level = e if e > level else release * level + (1 - release) * e
+        smooth[i] = level
+    gain = np.minimum(1.0, ceiling / np.maximum(smooth, 1e-9))
+    y = np.clip(y * np.repeat(gain, params.nchannels), -1, 1)
+    with wave.open(path, "w") as w:
+        w.setparams(params)
+        w.writeframes((y * 32767).astype(np.int16).tobytes())
+
+
 def convert_sounds():
     """Copy assets/ulti_<name>.wav into the character's sounds/ folder.
     Falls back to converting ulti_<name>.m4a with imageio-ffmpeg (pygame can't decode .m4a)."""
@@ -398,6 +430,8 @@ def convert_sounds():
                             "-ac", "2", "-ar", "44100", dst], check=True)
         else:
             print(f"no ulti sound for {name}")
+            continue
+        boost_loudness(dst)
 
 
 def build_preview(results):

@@ -1,30 +1,32 @@
 import pygame
-import math
-from settings import (
-    SCREEN_WIDTH, SCREEN_HEIGHT, COLOR_WHITE, COLOR_BLACK,
-    COLOR_HEALTH_PLAYER, COLOR_HEALTH_ENEMY, COLOR_HEALTH_BG,
-    COLOR_HEALTH_BORDER, COLOR_MENU_TITLE, COLOR_MENU_SUBTITLE,
-    COLOR_BUTTON_NORMAL, COLOR_BUTTON_HOVER, COLOR_BUTTON_BORDER,
-    COLOR_TEXT_NORMAL, COLOR_TEXT_SELECTED, ULTI_MAX
+from settings import SCREEN_WIDTH, SCREEN_HEIGHT, ULTI_MAX, DIFFICULTIES
+from pixelfont import (
+    PixelFont, draw_text, draw_title, draw_panel, draw_bar, dim,
+    GOLD, GOLD_DARK, CREAM, GREY, RED, INK, GREEN
 )
+
+BAR_W, BAR_H, BAR_TOP = 360, 22, 18
+PAUSE_OPTIONS = ["RESUME", "RESTART", "SETTINGS", "MAIN MENU"]
+PORTRAIT = (60, 68)
+
 
 class UIManager:
     def __init__(self):
-        pygame.font.init()
-        # Initialize fonts
-        self.font_large = pygame.font.SysFont("Impact", 54) or pygame.font.SysFont("Arial", 54, bold=True)
-        self.font_medium = pygame.font.SysFont("Verdana", 28, bold=True)
-        self.font_small = pygame.font.SysFont("Verdana", 18)
-        self.font_title = pygame.font.SysFont("Impact", 68) or pygame.font.SysFont("Arial", 68, bold=True)
+        # Pixel "fonts" (combat.py renders floating damage numbers with font_medium)
+        self.font_large = PixelFont(5)
+        self.font_medium = PixelFont(3)
+        self.font_small = PixelFont(2)
+        self.font_title = PixelFont(8)
 
         # Smooth HP Bar Interpolation Values
         self.player_hp_display = 100.0
         self.enemy_hp_display = 100.0
-        
+
         # Round Timer / Announcement
-        self.fight_banner_timer = 90  # "FIGHT!" banner frames at start
+        self.fight_banner_timer = 90  # "READY?" / "FIGHT!" banner frames at start
         self.ulti_banner = None       # (text, color, frames left)
         self.anim_counter = 0
+        self.difficulty = "MEDIUM"
 
     def reset(self):
         self.player_hp_display = 100.0
@@ -35,213 +37,126 @@ class UIManager:
     def show_ulti_banner(self, text, color):
         self.ulti_banner = (text, color, 70)
 
-    def draw_fighter_badge(self, surface, fighter, x, y, align_right):
-        """Portrait + ULTI meter under the health bar."""
-        size = (48, 54)
-        px = x - size[0] if align_right else x
+    # ------------------------------------------------------------------ HUD
+    def draw_side(self, surface, fighter, hp_display, right):
+        """Portrait, health bar, name and ULTI meter for one fighter (right=True mirrors the layout)."""
+        px = SCREEN_WIDTH - 14 - PORTRAIT[0] if right else 14
+        frame = pygame.Rect(px, 10, *PORTRAIT)
+        pygame.draw.rect(surface, INK, frame.inflate(8, 8))
+        pygame.draw.rect(surface, GOLD, frame.inflate(4, 4), 2)
         if fighter.assets:
-            surface.blit(pygame.transform.scale(fighter.assets.portrait, size), (px, y))
-        meter_w, meter_h = 170, 12
-        mx = px - 10 - meter_w if align_right else px + size[0] + 10
-        my = y + 8
-        ratio = max(0.0, min(1.0, fighter.ulti_meter / ULTI_MAX))
-        pygame.draw.rect(surface, COLOR_HEALTH_BG, (mx, my, meter_w, meter_h), border_radius=4)
-        fill_w = int(meter_w * ratio)
-        full = ratio >= 1.0
-        color = (255, 220, 60) if not full or (self.anim_counter // 8) % 2 else (255, 255, 200)
-        if fill_w > 0:
-            fx = mx + meter_w - fill_w if align_right else mx
-            pygame.draw.rect(surface, color, (fx, my, fill_w, meter_h), border_radius=4)
-        pygame.draw.rect(surface, COLOR_HEALTH_BORDER, (mx, my, meter_w, meter_h), width=1, border_radius=4)
-        label = "ULTI READY! [U]" if full and not align_right else ("ULTI READY!" if full else "ULTI")
-        txt = self.font_small.render(label, True, (255, 220, 60) if full else COLOR_TEXT_NORMAL)
-        tx = mx + meter_w - txt.get_width() if align_right else mx
-        surface.blit(txt, (tx, my + meter_h + 2))
+            portrait = pygame.transform.scale(fighter.assets.portrait, PORTRAIT)
+            if right:
+                portrait = pygame.transform.flip(portrait, True, False)
+            if fighter.hit_flash_timer > 0:
+                portrait = portrait.copy()
+                portrait.fill((255, 120, 120), special_flags=pygame.BLEND_RGB_MULT)
+            surface.blit(portrait, frame.topleft)
+
+        bx = frame.left - 16 - BAR_W if right else frame.right + 16
+        ratio = max(0.0, fighter.health / fighter.max_health)
+        low = ratio < 0.3
+        color = (230, 60, 50) if low and (self.anim_counter // 8) % 2 else (240, 200, 50) if ratio < 0.5 else GREEN
+        draw_bar(surface, (bx, BAR_TOP, BAR_W, BAR_H), ratio, color,
+                 trail_ratio=max(0.0, hp_display / fighter.max_health), right_to_left=right)
+
+        name_x = bx + BAR_W if right else bx
+        draw_text(surface, fighter.name, (name_x, BAR_TOP + BAR_H + 8), 3, CREAM, align="right" if right else "left")
+
+        # ULTI meter: 10 segments
+        seg_w, seg_h, gap = 16, 8, 3
+        full = fighter.ulti_meter >= ULTI_MAX
+        total_w = 10 * seg_w + 9 * gap
+        mx = bx if right else bx + BAR_W - total_w
+        my = BAR_TOP + BAR_H + 12
+        filled = fighter.ulti_meter / ULTI_MAX * 10
+        for i in range(10):
+            idx = 9 - i if right else i
+            sx = mx + idx * (seg_w + gap)
+            pygame.draw.rect(surface, INK, (sx - 1, my - 1, seg_w + 2, seg_h + 2))
+            amount = max(0.0, min(1.0, filled - i))
+            if amount > 0:
+                col = (255, 255, 200) if full and (self.anim_counter // 6) % 2 else (90, 170, 255) if not full else GOLD
+                w = int(seg_w * amount)
+                pygame.draw.rect(surface, col, (sx + (seg_w - w if right else 0), my, w, seg_h))
+            else:
+                pygame.draw.rect(surface, (30, 26, 44), (sx, my, seg_w, seg_h))
+        label = "ULTI READY [U]" if full and not right else "ULTI READY" if full else "ULTI"
+        lx = mx + total_w if right else mx
+        draw_text(surface, label, (lx, my + seg_h + 6), 2, GOLD if full else GREY, align="right" if right else "left")
 
     def draw_hud(self, surface, player, enemy):
-        # Smooth HP interpolation
-        self.player_hp_display += (player.health - self.player_hp_display) * 0.1
-        self.enemy_hp_display += (enemy.health - self.enemy_hp_display) * 0.1
-
-        bar_width = 380
-        bar_height = 24
-        bar_top = 34
-
-        # ------------------- PLAYER HUD (LEFT) -------------------
-        p_x = 40
-        # Label & Avatar Badge
-        p_name = self.font_medium.render(player.name, True, COLOR_WHITE)
-        surface.blit(p_name, (p_x, bar_top - 25))
-
-        # Health Bar Outer Border
-        p_bg_rect = pygame.Rect(p_x, bar_top, bar_width, bar_height)
-        pygame.draw.rect(surface, COLOR_HEALTH_BG, p_bg_rect, border_radius=6)
-        
-        # Red damage trail bar
-        p_trail_w = int((max(0, self.player_hp_display) / player.max_health) * bar_width)
-        if p_trail_w > 0:
-            pygame.draw.rect(surface, (255, 140, 0), pygame.Rect(p_x, bar_top, p_trail_w, bar_height), border_radius=6)
-
-        # Main green HP bar
-        p_hp_w = int((max(0, player.health) / player.max_health) * bar_width)
-        if p_hp_w > 0:
-            pygame.draw.rect(surface, COLOR_HEALTH_PLAYER, pygame.Rect(p_x, bar_top, p_hp_w, bar_height), border_radius=6)
-            
-        pygame.draw.rect(surface, COLOR_HEALTH_BORDER, p_bg_rect, width=2, border_radius=6)
-        
-        # HP Text
-        hp_str_p = f"{int(player.health)} / {int(player.max_health)}"
-        p_hp_txt = self.font_small.render(hp_str_p, True, COLOR_WHITE)
-        surface.blit(p_hp_txt, (p_x + 10, bar_top + 2))
-
-        # ------------------- ENEMY HUD (RIGHT) -------------------
-        e_x = SCREEN_WIDTH - 40 - bar_width
-        e_name = self.font_medium.render(enemy.name, True, COLOR_WHITE)
-        surface.blit(e_name, (SCREEN_WIDTH - 40 - e_name.get_width(), bar_top - 25))
-
-        # Health Bar Outer Border
-        e_bg_rect = pygame.Rect(e_x, bar_top, bar_width, bar_height)
-        pygame.draw.rect(surface, COLOR_HEALTH_BG, e_bg_rect, border_radius=6)
-
-        # Red damage trail bar (right aligned)
-        e_trail_w = int((max(0, self.enemy_hp_display) / enemy.max_health) * bar_width)
-        if e_trail_w > 0:
-            trail_x = e_x + (bar_width - e_trail_w)
-            pygame.draw.rect(surface, (255, 140, 0), pygame.Rect(trail_x, bar_top, e_trail_w, bar_height), border_radius=6)
-
-        # Main red HP bar
-        e_hp_w = int((max(0, enemy.health) / enemy.max_health) * bar_width)
-        if e_hp_w > 0:
-            hp_x = e_x + (bar_width - e_hp_w)
-            pygame.draw.rect(surface, COLOR_HEALTH_ENEMY, pygame.Rect(hp_x, bar_top, e_hp_w, bar_height), border_radius=6)
-
-        pygame.draw.rect(surface, COLOR_HEALTH_BORDER, e_bg_rect, width=2, border_radius=6)
-
-        # HP Text
-        hp_str_e = f"{int(enemy.health)} / {int(enemy.max_health)}"
-        e_hp_txt = self.font_small.render(hp_str_e, True, COLOR_WHITE)
-        surface.blit(e_hp_txt, (SCREEN_WIDTH - 40 - e_hp_txt.get_width() - 10, bar_top + 2))
-
-        # ------------------- PORTRAITS + ULTI METERS -------------------
         self.anim_counter += 1
-        self.draw_fighter_badge(surface, player, p_x, bar_top + bar_height + 6, False)
-        self.draw_fighter_badge(surface, enemy, SCREEN_WIDTH - 40, bar_top + bar_height + 6, True)
+        self.player_hp_display += (player.health - self.player_hp_display) * 0.06
+        self.enemy_hp_display += (enemy.health - self.enemy_hp_display) * 0.06
 
-        # ------------------- ULTI BANNER -------------------
+        self.draw_side(surface, player, self.player_hp_display, False)
+        self.draw_side(surface, enemy, self.enemy_hp_display, True)
+
+        # center emblem
+        draw_text(surface, "VS", (SCREEN_WIDTH // 2, BAR_TOP - 2), 4, GOLD, align="center")
+        diff = DIFFICULTIES.get(self.difficulty)
+        if diff:
+            draw_text(surface, self.difficulty, (SCREEN_WIDTH // 2, BAR_TOP + 34), 2, diff["color"], align="center")
+
+        # ULTI banner
         if self.ulti_banner:
             text, color, frames = self.ulti_banner
-            rendered = self.font_large.render(text, True, color)
-            shadow = self.font_large.render(text, True, (0, 0, 0))
-            bx = SCREEN_WIDTH // 2 - rendered.get_width() // 2
-            by = 110 - max(0, frames - 60) * 4
-            surface.blit(shadow, (bx + 3, by + 3))
-            surface.blit(rendered, (bx, by))
+            y = 118 - max(0, frames - 60) * 5
+            draw_text(surface, text, (SCREEN_WIDTH // 2, y), 4, color, align="center")
             self.ulti_banner = (text, color, frames - 1) if frames > 1 else None
 
-        # ------------------- VS BADGE -------------------
-        vs_txt = self.font_large.render("VS", True, COLOR_MENU_SUBTITLE)
-        surface.blit(vs_txt, (SCREEN_WIDTH // 2 - vs_txt.get_width() // 2, bar_top - 12))
-
-        # ------------------- START FIGHT ANNOUNCEMENT -------------------
+        # READY? / FIGHT!
         if self.fight_banner_timer > 0:
             self.fight_banner_timer -= 1
-            banner_text = "READY..." if self.fight_banner_timer > 45 else "FIGHT!"
-            banner_color = COLOR_MENU_SUBTITLE if self.fight_banner_timer > 45 else (255, 50, 50)
-            rendered = self.font_title.render(banner_text, True, banner_color)
-            
-            # Pulse scale
-            pulse = 1.0 + 0.1 * math.sin(self.fight_banner_timer * 0.2)
-            w = int(rendered.get_width() * pulse)
-            h = int(rendered.get_height() * pulse)
-            scaled = pygame.transform.smoothscale(rendered, (w, h))
-            
-            surface.blit(scaled, (SCREEN_WIDTH // 2 - w // 2, SCREEN_HEIGHT // 3 - h // 2))
+            if self.fight_banner_timer > 45:
+                draw_title(surface, "READY?", SCREEN_WIDTH // 2, 190, 10, top=CREAM, bottom=GOLD)
+            else:
+                draw_title(surface, "FIGHT!", SCREEN_WIDTH // 2, 190, 12, top=(255, 90, 60), bottom=RED)
+
+    def draw_ko(self, surface, ko_timer):
+        """Big K.O. stamp while the KO / victory animations play."""
+        if ko_timer > 0 and (ko_timer > 90 or (ko_timer // 10) % 2 == 0):
+            draw_title(surface, "K.O.", SCREEN_WIDTH // 2, 180, 16, top=(255, 90, 60), bottom=RED)
+
+    # ------------------------------------------------------------------ overlays
+    def menu_buttons(self, surface, options, selected_index, top, accent=RED):
+        rects = []
+        for i, opt in enumerate(options):
+            rect = pygame.Rect(SCREEN_WIDTH // 2 - 150, top + i * 58, 300, 46)
+            rects.append(rect)
+            selected = i == selected_index
+            pygame.draw.rect(surface, (70, 20, 30) if selected else (26, 20, 40), rect)
+            pygame.draw.rect(surface, accent if selected else (70, 64, 96), rect, 2)
+            if selected and (self.anim_counter // 15) % 2 == 0:
+                draw_text(surface, ">", (rect.left + 14, rect.top + 13), 3, GOLD)
+            draw_text(surface, opt, (rect.centerx, rect.top + 13), 3, GOLD if selected else GREY, align="center")
+        return rects
 
     def draw_pause_overlay(self, surface, selected_index=0):
-        # Semi-transparent dark overlay
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((10, 12, 20, 200))
-        surface.blit(overlay, (0, 0))
+        self.anim_counter += 1
+        dim(surface, 170)
+        panel = pygame.Rect(SCREEN_WIDTH // 2 - 200, SCREEN_HEIGHT // 2 - 190, 400, 380)
+        draw_panel(surface, panel)
+        draw_title(surface, "PAUSE", SCREEN_WIDTH // 2, panel.top + 26, 7)
+        return self.menu_buttons(surface, PAUSE_OPTIONS, selected_index, panel.top + 120)
 
-        # Pause Card
-        card_w, card_h = 400, 320
-        card_x = SCREEN_WIDTH // 2 - card_w // 2
-        card_y = SCREEN_HEIGHT // 2 - card_h // 2
+    def draw_end_game_overlay(self, surface, is_victory, selected_index=0, winner=None):
+        self.anim_counter += 1
+        dim(surface, 170)
+        panel = pygame.Rect(SCREEN_WIDTH // 2 - 260, SCREEN_HEIGHT // 2 - 210, 520, 420)
+        accent = GREEN if is_victory else RED
+        draw_panel(surface, panel, border=accent)
+        if is_victory:
+            draw_title(surface, "YOU WIN!", SCREEN_WIDTH // 2, panel.top + 24, 8, top=(170, 255, 150), bottom=GREEN)
+        else:
+            draw_title(surface, "YOU LOSE", SCREEN_WIDTH // 2, panel.top + 24, 8, top=(255, 120, 100), bottom=RED)
 
-        pygame.draw.rect(surface, (25, 30, 48), (card_x, card_y, card_w, card_h), border_radius=12)
-        pygame.draw.rect(surface, COLOR_BUTTON_BORDER, (card_x, card_y, card_w, card_h), width=2, border_radius=12)
+        if winner is not None and winner.assets:
+            frame = pygame.Rect(SCREEN_WIDTH // 2 - 45, panel.top + 100, 90, 102)
+            pygame.draw.rect(surface, INK, frame.inflate(8, 8))
+            pygame.draw.rect(surface, GOLD, frame.inflate(4, 4), 2)
+            surface.blit(pygame.transform.scale(winner.assets.portrait, frame.size), frame.topleft)
+            draw_text(surface, f"{winner.name} MENANG!", (SCREEN_WIDTH // 2, frame.bottom + 16), 3, GOLD, align="center")
 
-        # Title
-        title = self.font_large.render("PAUSED", True, COLOR_MENU_TITLE)
-        surface.blit(title, (SCREEN_WIDTH // 2 - title.get_width() // 2, card_y + 25))
-
-        # Options
-        options = ["RESUME", "RESTART", "MAIN MENU"]
-        button_rects = []
-        
-        for i, opt in enumerate(options):
-            btn_w, btn_h = 280, 48
-            btn_x = SCREEN_WIDTH // 2 - btn_w // 2
-            btn_y = card_y + 110 + i * 60
-            b_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
-            button_rects.append(b_rect)
-
-            is_sel = (i == selected_index)
-            bg_col = COLOR_BUTTON_HOVER if is_sel else COLOR_BUTTON_NORMAL
-            border_col = COLOR_MENU_TITLE if is_sel else (70, 80, 110)
-            txt_col = COLOR_TEXT_SELECTED if is_sel else COLOR_TEXT_NORMAL
-
-            pygame.draw.rect(surface, bg_col, b_rect, border_radius=8)
-            pygame.draw.rect(surface, border_col, b_rect, width=2 if is_sel else 1, border_radius=8)
-
-            txt = self.font_medium.render(opt, True, txt_col)
-            surface.blit(txt, (b_rect.centerx - txt.get_width() // 2, b_rect.centery - txt.get_height() // 2))
-
-        return button_rects
-
-    def draw_end_game_overlay(self, surface, is_victory, selected_index=0):
-        overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
-        overlay.fill((10, 12, 20, 210))
-        surface.blit(overlay, (0, 0))
-
-        card_w, card_h = 440, 340
-        card_x = SCREEN_WIDTH // 2 - card_w // 2
-        card_y = SCREEN_HEIGHT // 2 - card_h // 2
-
-        pygame.draw.rect(surface, (25, 30, 48), (card_x, card_y, card_w, card_h), border_radius=12)
-        accent_color = COLOR_HEALTH_PLAYER if is_victory else COLOR_HEALTH_ENEMY
-        pygame.draw.rect(surface, accent_color, (card_x, card_y, card_w, card_h), width=3, border_radius=12)
-
-        # Header Title (VICTORY! / DEFEAT)
-        main_title_str = "VICTORY!" if is_victory else "DEFEAT"
-        sub_title_str = "YOU WIN!" if is_victory else "YOU LOSE!"
-        
-        main_title = self.font_title.render(main_title_str, True, accent_color)
-        sub_title = self.font_medium.render(sub_title_str, True, COLOR_WHITE)
-
-        surface.blit(main_title, (SCREEN_WIDTH // 2 - main_title.get_width() // 2, card_y + 20))
-        surface.blit(sub_title, (SCREEN_WIDTH // 2 - sub_title.get_width() // 2, card_y + 90))
-
-        # Options
-        options = ["PLAY AGAIN", "MAIN MENU"]
-        button_rects = []
-        
-        for i, opt in enumerate(options):
-            btn_w, btn_h = 280, 50
-            btn_x = SCREEN_WIDTH // 2 - btn_w // 2
-            btn_y = card_y + 160 + i * 65
-            b_rect = pygame.Rect(btn_x, btn_y, btn_w, btn_h)
-            button_rects.append(b_rect)
-
-            is_sel = (i == selected_index)
-            bg_col = COLOR_BUTTON_HOVER if is_sel else COLOR_BUTTON_NORMAL
-            border_col = accent_color if is_sel else (70, 80, 110)
-            txt_col = COLOR_TEXT_SELECTED if is_sel else COLOR_TEXT_NORMAL
-
-            pygame.draw.rect(surface, bg_col, b_rect, border_radius=8)
-            pygame.draw.rect(surface, border_col, b_rect, width=2 if is_sel else 1, border_radius=8)
-
-            txt = self.font_medium.render(opt, True, txt_col)
-            surface.blit(txt, (b_rect.centerx - txt.get_width() // 2, b_rect.centery - txt.get_height() // 2))
-
-        return button_rects
+        return self.menu_buttons(surface, ["PLAY AGAIN", "MAIN MENU"], selected_index, panel.bottom - 128, accent)

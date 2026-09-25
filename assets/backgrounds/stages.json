@@ -1,0 +1,32 @@
+[
+  {
+    "id": "ikn",
+    "name": "IKN",
+    "file": "stage_ikn.png"
+  },
+  {
+    "id": "istana",
+    "name": "ISTANA",
+    "file": "stage_istana.png"
+  },
+  {
+    "id": "kopdes",
+    "name": "KOPDES",
+    "file": "stage_kopdes.png"
+  },
+  {
+    "id": "mbg",
+    "name": "DAPUR MBG",
+    "file": "stage_mbg.png"
+  },
+  {
+    "id": "sawit",
+    "name": "KEBUN SAWIT",
+    "file": "stage_sawit.png"
+  },
+  {
+    "id": "temple",
+    "name": "ARENA KUIL",
+    "file": "arena_temple.png"
+  }
+]

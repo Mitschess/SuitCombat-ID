@@ -4,7 +4,7 @@ import pygame
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 576
 FPS = 60
-TITLE = "PyFight - 2D Fighting Game"
+TITLE = "Suit Combat ID"
 
 # Colors (Vibrant Cyber/Fighting Palette)
 COLOR_BG_DARK = (15, 17, 26)
@@ -90,3 +90,25 @@ ULTI_CAST_FRAMES = 40     # caster is locked in the ulti pose this long
 KO_DELAY_FRAMES = 120     # KO / victory animation time before the result screen
 
 STATE_CHAR_SELECT = "CHAR_SELECT"
+STATE_STAGE_SELECT = "STAGE_SELECT"
+
+# CPU difficulty presets
+DIFFICULTY_ORDER = ["EASY", "MEDIUM", "HARD"]
+DIFFICULTIES = {
+    "EASY": dict(speed=0.7, damage=0.75, attack_chance=0.04, melee_block=0.15, proj_block=0.2, proj_jump=0.15,
+                 ranged_far=0.015, ranged_mid=0.008, ulti_use=0.004, ulti_dodge=0.3, meter_gain=0.7,
+                 pickup_greed=0.3, color=(80, 220, 90), desc="CPU LAMBAT & JARANG MENANGKIS"),
+    "MEDIUM": dict(speed=0.9, damage=1.0, attack_chance=0.2, melee_block=0.4, proj_block=0.5, proj_jump=0.3,
+                   ranged_far=0.04, ranged_mid=0.02, ulti_use=0.01, ulti_dodge=0.65, meter_gain=1.0,
+                   pickup_greed=0.6, color=(240, 190, 60), desc="LAWAN SEIMBANG"),
+    "HARD": dict(speed=1.05, damage=1.25, attack_chance=1.0, melee_block=0.65, proj_block=0.6, proj_jump=0.35,
+                 ranged_far=0.06, ranged_mid=0.035, ulti_use=0.025, ulti_dodge=0.9, meter_gain=1.3,
+                 pickup_greed=0.9, color=(230, 50, 50), desc="CPU CEPAT, KUAT & PINTAR MENGHINDAR"),
+}
+STATE_SETTINGS = "SETTINGS"
+
+# Health power-up (MBG food tray)
+HEAL_AMOUNT = MAX_HEALTH / 3   # a tray restores 1/3 of the health bar
+PICKUP_SPAWN_MIN = 480      # frames between spawns (8 - 13 s)
+PICKUP_SPAWN_MAX = 780
+PICKUP_LIFETIME = 540       # frames it stays on the floor before vanishing

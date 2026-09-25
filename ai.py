@@ -1,13 +1,18 @@
 import random
 import pygame
+from settings import DIFFICULTIES
 
 class EnemyAI:
-    def __init__(self, difficulty="NORMAL"):
-        self.difficulty = difficulty
+    def __init__(self, difficulty="MEDIUM"):
+        self.set_difficulty(difficulty)
         self.action_cooldown = 0
         self.reaction_delay = 0
 
-    def update(self, enemy, player, projectiles, ulti_manager=None):
+    def set_difficulty(self, difficulty):
+        self.difficulty = difficulty if difficulty in DIFFICULTIES else "MEDIUM"
+        self.p = DIFFICULTIES[self.difficulty]
+
+    def update(self, enemy, player, projectiles, ulti_manager=None, pickups=None):
         """
         Executes AI decision tree based on PRD Section 12:
         - distance > 300 -> approach / ranged attack
@@ -43,6 +48,17 @@ class EnemyAI:
                 enemy.move_right()
             return None
 
+        # 0b. Hurt CPU walks over to grab a health tray
+        target_x = pickups.cpu_target(enemy) if pickups else None
+        if target_x is not None and abs(target_x - enemy.rect.centerx) > 20:
+            enemy.block(False)
+            enemy.crouch(False)
+            if target_x < enemy.rect.centerx:
+                enemy.move_left()
+            else:
+                enemy.move_right()
+            return None
+
         # 1. Check incoming player ranged attacks to reactively block/jump
         incoming_proj = False
         for p in projectiles:
@@ -54,12 +70,12 @@ class EnemyAI:
                         break
 
         if incoming_proj:
-            # 50% block, 30% jump, 20% ignore
+            # block / jump / ignore, depending on difficulty
             r = random.random()
-            if r < 0.5:
+            if r < self.p["proj_block"]:
                 enemy.block(True)
                 return None
-            elif r < 0.8:
+            elif r < self.p["proj_block"] + self.p["proj_jump"]:
                 enemy.block(False)
                 enemy.jump()
 
@@ -69,7 +85,7 @@ class EnemyAI:
         # 2. Distance-Based AI Logic (PRD Section 12)
         if abs_dist > 300:
             # Very far away -> Approach player or use ranged attack
-            if random.random() < 0.04 and enemy.ranged_cooldown == 0:
+            if random.random() < self.p["ranged_far"] and enemy.ranged_cooldown == 0:
                 spawn_proj = enemy.attack_ranged()
             else:
                 if dist_x > 0:
@@ -79,7 +95,7 @@ class EnemyAI:
 
         elif 100 < abs_dist <= 300:
             # Medium distance -> Move towards player, occasionally shoot or jump
-            if random.random() < 0.02 and enemy.ranged_cooldown == 0:
+            if random.random() < self.p["ranged_mid"] and enemy.ranged_cooldown == 0:
                 spawn_proj = enemy.attack_ranged()
             else:
                 if dist_x > 0:
@@ -96,12 +112,12 @@ class EnemyAI:
             enemy.stop_moving()
             
             # If player is actively attacking melee, CPU has chance to block
-            if player.is_attacking_melee and random.random() < 0.4:
+            if player.is_attacking_melee and random.random() < self.p["melee_block"]:
                 enemy.block(True)
             else:
                 enemy.block(False)
                 # Execute melee attack
-                if enemy.melee_cooldown == 0:
+                if enemy.melee_cooldown == 0 and random.random() < self.p["attack_chance"]:
                     enemy.attack_melee()
                 elif random.random() < 0.05:
                     # Crouch or maneuver
