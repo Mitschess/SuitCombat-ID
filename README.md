@@ -4,6 +4,12 @@
 Suit Combat ID adalah game pertarungan 2D 1v1 antara Pemain (Player) dan Komputer (Computer AI) yang dibangun menggunakan Python dan Pygame.
 
 ---
+<img width="1280" height="717" alt="image" src="https://github.com/user-attachments/assets/c0f665a1-a645-4b03-a134-23b649f30fa5" />
+<img width="1281" height="718" alt="image" src="https://github.com/user-attachments/assets/e1dd6919-65fc-44a7-8f82-01b28777154d" />
+<img width="1282" height="720" alt="image" src="https://github.com/user-attachments/assets/918a9174-e63e-4b69-bba5-7ed1861679fe" />
+<img width="1280" height="718" alt="image" src="https://github.com/user-attachments/assets/93cb70f1-b39b-4de7-a050-4e46ed3d61bb" />
+<img width="1277" height="717" alt="image" src="https://github.com/user-attachments/assets/4a6f6855-2aa6-4136-aa7c-c376faf220a0" />
+
 
 ## 🎮 Kontrol Permainan
 
